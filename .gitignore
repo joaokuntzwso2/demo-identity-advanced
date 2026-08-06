@@ -1,0 +1,461 @@
+# =============================================================================
+# MarketSphere Identity POC
+# WSO2 Identity Server 7.3 + React/Vite + Node.js + Python + Docker Compose
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Operating systems
+# -----------------------------------------------------------------------------
+
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+
+# -----------------------------------------------------------------------------
+# IDEs and editors
+# -----------------------------------------------------------------------------
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+!.vscode/launch.example.json
+!.vscode/tasks.example.json
+
+*.code-workspace
+
+.project
+.classpath
+.settings/
+
+*.swp
+*.swo
+*.swn
+*.bak
+*~
+.#*
+\#*\#
+
+
+# -----------------------------------------------------------------------------
+# Local environment and secrets
+# -----------------------------------------------------------------------------
+
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.defaults
+
+*.local
+*.local.json
+*.local.yml
+*.local.yaml
+
+secrets/
+.secret/
+.credentials/
+credentials/
+
+*.secret
+*.secrets
+*.credentials
+
+# Private keys and certificates
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+*.crt
+*.cer
+*.der
+*.csr
+
+# Allow intentionally committed public/demo certificate examples
+!*.example.pem
+!*.example.crt
+!*.example.cer
+!*.sample.pem
+!*.sample.crt
+
+
+# -----------------------------------------------------------------------------
+# Node.js
+# -----------------------------------------------------------------------------
+
+node_modules/
+**/node_modules/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+.npm/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Keep dependency lockfiles committed
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+
+# -----------------------------------------------------------------------------
+# React and Vite
+# -----------------------------------------------------------------------------
+
+dist/
+**/dist/
+
+build/
+**/build/
+
+.vite/
+**/.vite/
+
+vite.config.*.timestamp-*
+*.tsbuildinfo
+
+coverage/
+**/coverage/
+
+.nyc_output/
+.eslintcache
+.stylelintcache
+
+storybook-static/
+
+
+# -----------------------------------------------------------------------------
+# Python bootstrap
+# -----------------------------------------------------------------------------
+
+__pycache__/
+**/__pycache__/
+
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+
+.venv/
+venv/
+env/
+ENV/
+
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+wheels/
+
+.python-version
+
+
+# -----------------------------------------------------------------------------
+# Docker and Docker Compose local state
+# -----------------------------------------------------------------------------
+
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
+
+docker-compose.local.yml
+docker-compose.local.yaml
+compose.local.yml
+compose.local.yaml
+
+.docker/
+docker-data/
+docker-volumes/
+volumes/
+
+# Local Docker build output
+*.docker.tar
+*.image.tar
+
+
+# -----------------------------------------------------------------------------
+# Generated runtime configuration
+# -----------------------------------------------------------------------------
+
+runtime/
+.runtime/
+
+runtime-config.json
+runtime-config.*.json
+ui-config.json
+public-runtime-config.json
+
+**/runtime-config.json
+**/ui-config.json
+
+bootstrap-report.json
+bootstrap-status.json
+bootstrap-output.json
+bootstrap-result.json
+
+generated/
+.generated/
+
+tmp/
+temp/
+.tmp/
+.cache/
+
+
+# -----------------------------------------------------------------------------
+# WSO2 runtime data
+# -----------------------------------------------------------------------------
+
+# Embedded H2 databases
+*.mv.db
+*.trace.db
+*.h2.db
+*.lock.db
+
+# WSO2 runtime database directories
+platform/wso2/repository/database/
+platform/wso2/database/
+platform/wso2/data/
+
+# WSO2 generated runtime directories if the product is unpacked locally
+**/repository/logs/
+**/repository/tmp/
+**/repository/work/
+**/repository/components/patches/
+**/repository/components/dropins/
+**/repository/deployment/server/webapps/
+
+# Carbon and WSO2 logs
+wso2carbon.log*
+audit.log*
+http_access*.log*
+patches.log*
+correlation.log*
+memory.log*
+gc.log*
+gc-*.log*
+
+# Do not ignore source-controlled WSO2 configuration
+!platform/wso2/deployment.toml
+!platform/wso2/userstores/
+!platform/wso2/userstores/**
+!platform/wso2/**/*.xml
+
+
+# -----------------------------------------------------------------------------
+# LDAP local data
+# -----------------------------------------------------------------------------
+
+ldap-data/
+ldap-config/
+openldap-data/
+openldap-config/
+
+platform/ldap/data/
+platform/ldap/config/
+
+# Keep bootstrap LDIF files committed
+!platform/ldap/
+!platform/ldap/**/*.ldif
+
+
+# -----------------------------------------------------------------------------
+# Keycloak local data
+# -----------------------------------------------------------------------------
+
+keycloak-data/
+keycloak-db/
+
+platform/keycloak/data/
+platform/keycloak/db/
+
+# Keep realm definitions committed
+!platform/keycloak/
+!platform/keycloak/realm.json
+!platform/keycloak/**/*.json
+
+
+# -----------------------------------------------------------------------------
+# Databases and persistent local state
+# -----------------------------------------------------------------------------
+
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.rdb
+
+postgres-data/
+mysql-data/
+mariadb-data/
+
+
+# -----------------------------------------------------------------------------
+# Logs, process files, and diagnostic output
+# -----------------------------------------------------------------------------
+
+logs/
+**/logs/
+
+*.log
+*.log.*
+*.out
+*.err
+
+*.pid
+*.pid.lock
+*.seed
+
+diagnostics/
+debug/
+debug-output/
+test-results/
+playwright-report/
+
+
+# -----------------------------------------------------------------------------
+# HTTP and API test output
+# -----------------------------------------------------------------------------
+
+*.http-response
+*.response.json
+*.token.json
+*.jwt
+*.access-token
+*.id-token
+
+curl-output.*
+api-response.*
+token-response.*
+
+
+# -----------------------------------------------------------------------------
+# OAuth, OIDC, and generated credentials
+# -----------------------------------------------------------------------------
+
+oauth-clients.json
+oauth-secrets.json
+client-secrets.json
+generated-secrets.json
+agent-credentials.json
+
+tokens/
+.token-cache/
+oidc-cache/
+
+# Keep sanitized examples
+!*.example.json
+!*.sample.json
+!*.template.json
+
+
+# -----------------------------------------------------------------------------
+# Local agent and workload output
+# -----------------------------------------------------------------------------
+
+agent-output/
+agent-runs/
+reconciliation-output/
+reconciliation-results/
+
+REC-*.json
+
+
+# -----------------------------------------------------------------------------
+# Backup files created during repository patching
+# -----------------------------------------------------------------------------
+
+*.before-*
+*.before.*
+*.backup
+*.backup.*
+*.orig
+*.rej
+
+docker-compose.yml.before-*
+bootstrap/bootstrap.py.before-*
+ui/src/main.jsx.before-*
+ui/src/styles.css.before-*
+ui/index.html.before-*
+services/*/src/*.before-*
+
+
+# -----------------------------------------------------------------------------
+# Archives and generated packages
+# -----------------------------------------------------------------------------
+
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.7z
+*.rar
+
+artifacts/
+releases/
+
+
+# -----------------------------------------------------------------------------
+# Test and development tooling
+# -----------------------------------------------------------------------------
+
+.cypress/
+cypress/videos/
+cypress/screenshots/
+
+playwright/.cache/
+test-results/
+
+junit.xml
+reports/
+
+
+# -----------------------------------------------------------------------------
+# Miscellaneous local files
+# -----------------------------------------------------------------------------
+
+.history/
+.local-history/
+session/
+sessions/
+
+shell_session*
+.zsh_sessions/
+
+nohup.out

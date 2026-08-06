@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?><UserStoreManager class="org.wso2.carbon.identity.agent.manager.AgentUserStoreManager">
+      <Property name="UsernameJavaRegEx">^[a-zA-Z0-9_+-]+$</Property>
+      <Property name="UsernameJavaScriptRegEx">^[a-zA-Z0-9_+-]+$</Property>
+      <Property name="UsernameJavaRegExViolationErrorMsg">Username pattern policy violated.</Property>
+      <Property name="PasswordJavaRegEx">^((?=.*\d)(?=.*[a-z])(?=.*[A-Z])).{8,100}$</Property>
+      <Property name="PasswordJavaScriptRegEx">^((?=.*\d)(?=.*[a-z])(?=.*[A-Z])).{8,100}$</Property>
+      <Property name="RolenameJavaRegEx">^[a-zA-Z0-9-_]{3,30}$</Property>
+      <Property name="RolenameJavaScriptRegEx">^[a-zA-Z0-9-_]{3,30}$</Property>
+      <Property name="MultiAttributeSeparator">,</Property>
+      <Property name="DomainName">AGENT</Property>
+      <Property name="Description"/>
+</UserStoreManager>

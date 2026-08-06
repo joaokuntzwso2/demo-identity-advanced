@@ -1,0 +1,193 @@
+{
+  "realm": "corporate",
+  "enabled": true,
+  "displayName": "MarketSphere Corporate Identity",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "clients": [
+    {
+      "clientId": "wso2-portal",
+      "name": "WSO2 Identity Server Federation",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "wso2-portal-secret",
+      "redirectUris": [
+        "https://localhost:9443/commonauth"
+      ],
+      "webOrigins": [
+        "https://localhost:9443"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "post.logout.redirect.uris": "https://localhost:9443/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "department",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "department",
+            "claim.name": "department",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "wso2-token-exchange-source",
+      "name": "Token Exchange Third-Party JWT Source",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "wso2-token-exchange-source-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "token-exchange-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "wso2-token-exchange-source",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "department",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "department",
+            "claim.name": "department",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "portal_users"
+    },
+    {
+      "name": "finance_users"
+    },
+    {
+      "name": "external_contractors"
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Silva",
+      "email": "alice@marketsphere.local",
+      "attributes": {
+        "department": [
+          "Sales"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Alice@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "portal_users",
+        "finance_users"
+      ]
+    },
+    {
+      "username": "federated.user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Fernanda",
+      "lastName": "Oliveira",
+      "email": "fernanda.oliveira@marketsphere.local",
+      "attributes": {
+        "department": [
+          "Finance"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Federated@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "portal_users",
+        "finance_users"
+      ]
+    },
+    {
+      "username": "external.contractor",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Rafael",
+      "lastName": "Mendes",
+      "email": "rafael.mendes@partner.local",
+      "attributes": {
+        "department": [
+          "Partner"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Federated@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "external_contractors"
+      ]
+    }
+  ]
+}

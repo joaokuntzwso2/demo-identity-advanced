@@ -1,0 +1,140 @@
+name: wso2-identity-customer-poc
+
+services:
+  ldap:
+    image: osixia/openldap:1.5.0
+    command: ["--copy-service"]
+    hostname: ldap
+    environment:
+      LDAP_ORGANISATION: MarketSphere Corporation
+      LDAP_DOMAIN: marketsphere.local
+      LDAP_ADMIN_PASSWORD: admin
+      LDAP_CONFIG_PASSWORD: config
+      LDAP_TLS: "false"
+    volumes:
+      - ./platform/ldap/bootstrap.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/50-marketsphere.ldif:ro
+    ports:
+      - "1389:389"
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:389 -D 'cn=admin,dc=marketsphere,dc=local' -w admin -b 'dc=marketsphere,dc=local' -s base >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.8
+    command: ["start-dev", "--import-realm", "--http-port=8080", "--hostname=http://localhost:8081", "--hostname-backchannel-dynamic=true"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./platform/keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /realms/corporate/.well-known/openid-configuration HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; grep -q '200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  wso2is:
+    image: wso2/wso2is:7.3.0
+    hostname: localhost
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+    volumes:
+      - ./platform/wso2/deployment.toml:/home/wso2carbon/wso2is-7.3.0/repository/conf/deployment.toml:ro
+      - ./platform/wso2/userstores:/home/wso2carbon/wso2is-7.3.0/repository/deployment/server/userstores
+      - wso2_data:/home/wso2carbon/wso2is-7.3.0/repository/database
+    depends_on:
+      ldap:
+        condition: service_healthy
+    ports:
+      - "9443:9443"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -kfsS https://localhost:9443/oauth2/jwks >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 60s
+
+  bootstrap:
+    build: ./bootstrap
+    environment:
+      WSO2_BASE_URL: https://wso2is:9443
+      WSO2_PUBLIC_BASE_URL: https://localhost:9443
+      WSO2_ADMIN_USER: ${WSO2_ADMIN_USER:-admin}
+      WSO2_ADMIN_PASSWORD: ${WSO2_ADMIN_PASSWORD:-admin}
+      ALICE_PASSWORD: ${ALICE_PASSWORD:-Alice@123}
+      BOB_PASSWORD: ${BOB_PASSWORD:-Bob@1234}
+      CAROL_PASSWORD: ${CAROL_PASSWORD:-Carol@123}
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_BASE_URL: http://localhost:8081
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      BOOTSTRAP_STRICT: ${BOOTSTRAP_STRICT:-false}
+      RUNTIME_DIR: /runtime
+    volumes:
+      - runtime_config:/runtime
+    depends_on:
+      wso2is:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+  marketplace-api:
+    build: ./services/marketplace-api
+    environment:
+      PORT: 4000
+      RUNTIME_CONFIG_PATH: /runtime/runtime-config.json
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      AGENT_URL: http://inventory-agent:5001
+    volumes:
+      - runtime_config:/runtime:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  inventory-agent:
+    build: ./services/inventory-agent
+    environment:
+      PORT: 5001
+      RUNTIME_CONFIG_PATH: /runtime/runtime-config.json
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      MARKETPLACE_API_URL: http://marketplace-api:4000
+    volumes:
+      - runtime_config:/runtime:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    expose:
+      - "5001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  ui:
+    build: ./ui
+    volumes:
+      - runtime_config:/usr/share/nginx/html/runtime:ro
+    depends_on:
+      marketplace-api:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+
+volumes:
+  wso2_data:
+  runtime_config:

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UserStoreManager class="org.wso2.carbon.user.core.ldap.UniqueIDReadOnlyLDAPUserStoreManager">
+    <Property name="DomainName">CORP</Property>
+    <Property name="Disabled">false</Property>
+    <Property name="ReadGroups">true</Property>
+    <Property name="ConnectionURL">ldap://ldap:389</Property>
+    <Property name="ConnectionName">cn=admin,dc=marketsphere,dc=local</Property>
+    <Property name="ConnectionPassword">admin</Property>
+    <Property name="UserSearchBase">ou=people,dc=marketsphere,dc=local</Property>
+    <Property name="UserEntryObjectClass">inetOrgPerson</Property>
+    <Property name="UserNameAttribute">uid</Property>
+    <Property name="UserIDAttribute">entryUUID</Property>
+    <Property name="UserIdSearchFilter">(&amp;(objectClass=inetOrgPerson)(entryUUID=?))</Property>
+    <Property name="UserNameSearchFilter">(&amp;(objectClass=inetOrgPerson)(uid=?))</Property>
+    <Property name="UserNameListFilter">(objectClass=inetOrgPerson)</Property>
+    <Property name="UserNameJavaScriptRegEx">^[a-zA-Z0-9._\-|/]{3,30}$</Property>
+    <Property name="PasswordJavaScriptRegEx">^[\S]{5,30}$</Property>
+    <Property name="GroupSearchBase">ou=groups,dc=marketsphere,dc=local</Property>
+    <Property name="GroupEntryObjectClass">groupOfNames</Property>
+    <Property name="GroupNameAttribute">cn</Property>
+    <Property name="GroupIdAttribute">entryUUID</Property>
+    <Property name="GroupNameSearchFilter">(&amp;(objectClass=groupOfNames)(cn=?))</Property>
+    <Property name="GroupNameListFilter">(objectClass=groupOfNames)</Property>
+    <Property name="MembershipAttribute">member</Property>
+    <Property name="BackLinksEnabled">false</Property>
+    <Property name="UsernameJavaRegEx">^[a-zA-Z0-9._\-|/]{3,30}$</Property>
+    <Property name="PasswordHashMethod">PLAIN_TEXT</Property>
+    <Property name="SCIMEnabled">true</Property>
+    <Property name="CaseInsensitiveUsername">true</Property>
+    <Property name="MultiAttributeSeparator">,</Property>
+</UserStoreManager>

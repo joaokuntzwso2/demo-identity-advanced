@@ -1,0 +1,60 @@
+[server]
+hostname = "localhost"
+node_ip = "127.0.0.1"
+base_path = "https://$ref{server.hostname}:${carbon.management.port}"
+
+[super_admin]
+username = "admin"
+password = "admin"
+create_admin_account = true
+
+[user_store]
+type = "database_unique_id"
+
+[database.identity_db]
+type = "h2"
+url = "jdbc:h2:./repository/database/WSO2IDENTITY_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
+username = "wso2carbon"
+password = "wso2carbon"
+
+[database.shared_db]
+type = "h2"
+url = "jdbc:h2:./repository/database/WSO2SHARED_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
+username = "wso2carbon"
+password = "wso2carbon"
+
+[datasource.AgentIdentity]
+id = "AgentIdentity"
+url = "jdbc:h2:./repository/database/WSO2AGENTIDENTITY_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
+username = "wso2carbon"
+password = "wso2carbon"
+driver = "org.h2.Driver"
+
+[keystore.primary]
+file_name = "wso2carbon.p12"
+password = "wso2carbon"
+type = "PKCS12"
+
+[oauth]
+allowed_scopes = ["openid", "profile", "email", "address", "phone"]
+
+[oauth.extensions]
+token_persistence_processor = "org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessor"
+
+[oauth.oidc]
+id_token.signature_algorithm = "SHA256withRSA"
+
+[transport.https.properties]
+proxyPort = 9443
+
+[cors]
+allow_generic_http_requests = true
+allow_any_origin = false
+allowed_origins = ["http://localhost:3000", "http://localhost:4000"]
+allow_subdomains = false
+supported_methods = ["GET", "POST", "HEAD", "OPTIONS", "PUT", "PATCH", "DELETE"]
+support_any_header = true
+supported_headers = ["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"]
+exposed_headers = ["Location", "Link"]
+supports_credentials = true
+max_age = 3600

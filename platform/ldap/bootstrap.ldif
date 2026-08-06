@@ -1,0 +1,48 @@
+dn: ou=people,dc=marketsphere,dc=local
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=marketsphere,dc=local
+objectClass: organizationalUnit
+ou: groups
+
+dn: uid=diana,ou=people,dc=marketsphere,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: Diana Costa
+sn: Costa
+givenName: Diana
+uid: diana
+mail: diana@marketsphere.local
+title: Corporate Analyst
+departmentNumber: Finance
+userPassword: Corporate@123
+
+dn: uid=eduardo,ou=people,dc=marketsphere,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: Eduardo Lima
+sn: Lima
+givenName: Eduardo
+uid: eduardo
+mail: eduardo@marketsphere.local
+title: External User Store Auditor
+departmentNumber: Audit
+userPassword: Corporate@123
+
+dn: cn=portal_users,ou=groups,dc=marketsphere,dc=local
+objectClass: groupOfNames
+cn: portal_users
+member: uid=diana,ou=people,dc=marketsphere,dc=local
+
+dn: cn=finance_users,ou=groups,dc=marketsphere,dc=local
+objectClass: groupOfNames
+cn: finance_users
+member: uid=diana,ou=people,dc=marketsphere,dc=local
+
+dn: cn=auditors,ou=groups,dc=marketsphere,dc=local
+objectClass: groupOfNames
+cn: auditors
+member: uid=eduardo,ou=people,dc=marketsphere,dc=local
