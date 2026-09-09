@@ -42,6 +42,8 @@ Environment ready
 Demo UI:            http://localhost:3000
 Protected API:      http://localhost:4000/health
 WSO2 Console:       https://localhost:9443/console
+My Account:           https://localhost:9443/myaccount
+Application Portal:   http://localhost:3000/myapps/
 Corporate OIDC IdP: http://localhost:8081
 LDAP:               ldap://localhost:1389
 
@@ -77,6 +79,30 @@ case "$ACTION" in
     "${COMPOSE[@]}" up -d --build --force-recreate marketplace-api inventory-agent ui
     wait_http "Protected API" "http://localhost:4000/health" 120
     ;;
+  account)
+    preflight
+    url="https://localhost:9443/myaccount"
+    log "Opening WSO2 My Account: $url"
+    if command -v open >/dev/null 2>&1; then
+      open "$url"
+    elif command -v xdg-open >/dev/null 2>&1; then
+      xdg-open "$url" >/dev/null 2>&1 || true
+    else
+      printf '%s\n' "$url"
+    fi
+    ;;
+  launcher)
+    preflight
+    url="http://localhost:3000/myapps/"
+    log "Opening Application Portal: $url"
+    if command -v open >/dev/null 2>&1; then
+      open "$url"
+    elif command -v xdg-open >/dev/null 2>&1; then
+      xdg-open "$url" >/dev/null 2>&1 || true
+    else
+      printf '%s\n' "$url"
+    fi
+    ;;
   smoke)
     preflight
     exec "$ROOT_DIR/scripts/smoke.sh"
@@ -104,7 +130,7 @@ case "$ACTION" in
     ;;
   *)
     cat >&2 <<EOF_USAGE
-Usage: ./demo.sh {up|bootstrap|smoke|status|logs [service]|down|reset}
+Usage: ./demo.sh {up|bootstrap|account|launcher|smoke|status|logs [service]|down|reset}
 EOF_USAGE
     exit 2
     ;;

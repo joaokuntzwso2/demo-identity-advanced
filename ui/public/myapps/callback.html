@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#f6f4f2" />
+  <title>Applications | WSO2 Identity Server</title>
+  <link rel="stylesheet" href="/myapps/styles.css" />
+</head>
+<body>
+  <div id="loading" class="full-page-state">
+    <div class="content-loader"></div>
+  </div>
+
+  <div id="error" class="full-page-state hidden">
+    <div class="error-panel">
+      <div class="error-symbol">!</div>
+      <h2>Something went wrong</h2>
+      <p id="errorMessage"></p>
+      <button class="primary-button" onclick="location.href='/myapps/'">Try again</button>
+    </div>
+  </div>
+
+  <div id="shell" class="app-shell hidden">
+    <header class="is-header">
+      <div class="header-left">
+        <button id="mobileNavToggle" class="menu-button" type="button" aria-label="Toggle navigation">
+          <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 7h14M5 12h9M5 17h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        <a class="product-brand" href="/myapps/" aria-label="WSO2 Identity Server Application Portal">
+          <svg class="product-symbol" width="25" height="25" viewBox="0 0 28 28" aria-hidden="true">
+            <circle cx="14" cy="14" r="11.3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M4.8 14h4l1.7-4.3 3 8.4 2.4-6.1 1.4 2h5.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="product-name">WSO2 IDENTITY SERVER</span>
+          <span class="portal-name">Application Portal</span>
+        </a>
+      </div>
+
+      <div class="header-right">
+        <button id="avatarButton" class="user-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+          <span id="avatar" class="user-avatar">U</span>
+          <strong id="headerUserName" class="header-user-name">User</strong>
+          <svg class="user-chevron" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div id="userMenu" class="user-dropdown hidden">
+          <div class="dropdown-profile">
+            <span id="menuAvatar" class="user-avatar dropdown-avatar">U</span>
+            <div class="dropdown-profile-text">
+              <strong id="userName">User</strong>
+              <span id="userEmail"></span>
+            </div>
+          </div>
+
+          <a class="dropdown-action" href="https://localhost:9443/myaccount">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.8" fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M5.5 20c.6-4 2.8-6 6.5-6s5.9 2 6.5 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <span>My Account</span>
+          </a>
+
+          <button id="signOut" class="dropdown-action logout-action" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <aside id="sideNav" class="side-nav">
+      <nav class="nav-list" aria-label="Application portal navigation">
+        <a class="nav-item selected" href="/myapps/" aria-current="page">
+          <svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="6.6" height="6.6" rx="1.2"
+              fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="13.9" y="3.5" width="6.6" height="6.6" rx="1.2"
+              fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="3.5" y="13.9" width="6.6" height="6.6" rx="1.2"
+              fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="13.9" y="13.9" width="6.6" height="6.6" rx="1.2"
+              fill="none" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span>Applications</span>
+        </a>
+      </nav>
+    </aside>
+
+    <div id="mobileOverlay" class="mobile-overlay hidden"></div>
+
+    <main class="main-content">
+      <div class="page-content">
+        <div class="page-heading">
+          <h1>Applications</h1>
+          <p>Discover and access your applications</p>
+        </div>
+
+        <div class="search-row">
+          <div class="search-control">
+            <svg class="search-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10.6" cy="10.6" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <path d="m15.4 15.4 4.3 4.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+
+            <input id="search" type="search" placeholder="Search by application name" autocomplete="off" />
+
+            <span class="filter-decoration" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <path d="M4 7h16M7 12h10M10 17h4" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <div id="searchIndicator" class="search-results-indicator"></div>
+        <div class="content-divider"></div>
+
+        <section id="recentSection" class="recent-section hidden">
+          <h2 class="section-title">Recently viewed</h2>
+          <div id="recentApps" class="recent-applications"></div>
+        </section>
+
+        <div id="allHeading" class="all-heading">
+          <h2 class="section-title">All applications</h2>
+        </div>
+
+        <section class="applications-section">
+          <div id="apps" class="application-list"></div>
+
+          <div id="empty" class="empty-placeholder hidden">
+            <div class="empty-placeholder-apps"><span></span><span></span><span></span><span></span></div>
+            <h3>No applications found</h3>
+            <p>No applications match your current search.</p>
+            <button id="clearSearch" class="text-button" type="button">Clear search</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="/myapps/app.js"></script>
+</body>
+</html>

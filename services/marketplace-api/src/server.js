@@ -152,6 +152,9 @@ function publicConfig(config) {
     resources: config.resources,
     clients: {
       portal: config.clients.portal,
+      finance: config.clients.finance,
+      security: config.clients.security,
+      appPortal: config.clients.appPortal,
       m2m: { clientId: config.clients.m2m.clientId, scope: config.clients.m2m.scope },
       tokenExchange: { clientId: config.clients.tokenExchange.clientId, scope: config.clients.tokenExchange.scope },
       agentApp: config.clients.agentApp,
@@ -232,6 +235,118 @@ app.get(
   requireEntitlement({ groups: ["portal_admins"], roles: ["portal-admin"] }),
   (req, res) => res.json({ decision: "allow", message: "Administrative operation authorized.", principal: req.principal }),
 );
+
+// Microsoft/Ping-style My Apps catalog, backed by the native WSO2
+// User Discoverable Application API. The browser token is passed through;
+// WSO2 remains the source of truth for the signed-in user's application list.
+// My Account-style signed-in user profile.
+app.get("/api/my-profile", async (req, res) => {
+  const authorization = req.headers.authorization || "";
+
+  if (!authorization.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "missing_bearer_token" });
+  }
+
+  try {
+    const { request: httpsRequest } = await import("node:https");
+
+    const options = {
+      hostname: process.env.WSO2_INTERNAL_HOST || "wso2is",
+      port: Number(process.env.WSO2_INTERNAL_PORT || 9443),
+      path: "/scim2/Me",
+      method: "GET",
+      rejectUnauthorized: false,
+      headers: {
+        Accept: "application/scim+json, application/json",
+        Authorization: authorization,
+      },
+    };
+
+    const upstream = httpsRequest(options, (upstreamResponse) => {
+      let body = "";
+
+      upstreamResponse.setEncoding("utf8");
+      upstreamResponse.on("data", (chunk) => {
+        body += chunk;
+      });
+
+      upstreamResponse.on("end", () => {
+        const status = upstreamResponse.statusCode || 502;
+
+        try {
+          const payload = body ? JSON.parse(body) : {};
+          return res.status(status).json(payload);
+        } catch {
+          return res.status(status).json({
+            error: "profile_upstream_non_json",
+            status,
+            body: body.slice(0, 300),
+          });
+        }
+      });
+    });
+
+    upstream.on("error", (error) => {
+      console.error("my profile proxy failed", error);
+      res.status(502).json({
+        error: "profile_proxy_error",
+        detail: error.message,
+      });
+    });
+
+    upstream.end();
+  } catch (error) {
+    console.error("my profile proxy setup failed", error);
+    res.status(500).json({
+      error: "profile_proxy_error",
+      detail: error.message,
+    });
+  }
+});
+
+app.get("/api/discoverable-applications", async (req, res) => {
+  const authorization = req.headers.authorization || "";
+  if (!authorization.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "missing_bearer_token" });
+  }
+
+  try {
+    const { request: httpsRequest } = await import("node:https");
+
+    // Use the Docker-internal Identity Server service directly.
+    // Do not derive this endpoint from JWKS/public browser metadata.
+    const options = {
+      hostname: process.env.WSO2_INTERNAL_HOST || "wso2is",
+      port: Number(process.env.WSO2_INTERNAL_PORT || 9443),
+      path: "/api/users/v1/me/applications",
+      method: "GET",
+      rejectUnauthorized: false,
+      headers: {
+        Accept: "application/json",
+        Authorization: authorization,
+      },
+    };
+
+    const upstream = httpsRequest(options, (upstreamRes) => {
+      const chunks = [];
+      upstreamRes.on("data", (chunk) => chunks.push(chunk));
+      upstreamRes.on("end", () => {
+        const body = Buffer.concat(chunks);
+        res.status(upstreamRes.statusCode || 502);
+        res.set("Content-Type", upstreamRes.headers["content-type"] || "application/json");
+        res.send(body);
+      });
+    });
+    upstream.on("error", (error) => {
+      console.error("discoverable applications proxy failed", error);
+      res.status(502).json({ error: "wso2_catalog_unavailable" });
+    });
+    upstream.end();
+  } catch (error) {
+    console.error("discoverable applications proxy setup failed", error);
+    res.status(500).json({ error: "catalog_proxy_error", detail: error.message });
+  }
+});
 
 app.get("/api/m2m/orders", authenticate, requireScope("orders.read"), (req, res) => {
   res.json({

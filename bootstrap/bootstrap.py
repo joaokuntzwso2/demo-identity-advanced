@@ -701,6 +701,97 @@ def ensure_client(
     return result
 
 
+
+def _discoverable_group_payload(
+    groups: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    # Convert SCIM groups into the IS 7.3 Application Management API shape.
+    by_store: dict[str, list[dict[str, str]]] = {}
+
+    for group in groups:
+        group_id = group.get("id")
+        display_name = group.get("displayName") or group.get("name")
+        if not group_id or not display_name:
+            continue
+
+        if "/" in display_name:
+            store, group_name = display_name.split("/", 1)
+        else:
+            store, group_name = "PRIMARY", display_name
+
+        by_store.setdefault(store.upper(), []).append({
+            "id": group_id,
+            "name": group_name,
+        })
+
+    return [
+        {"userStore": store, "groups": values}
+        for store, values in sorted(by_store.items())
+    ]
+
+
+def ensure_discoverable_application(
+    app_id: str,
+    access_url: str,
+    groups: list[dict[str, Any]],
+) -> None:
+    # Configure the shipped My Account application catalog. This is not a
+    # custom launcher: discoverability and group filtering are native IS 7.3.
+    path = f"/api/server/v1/applications/{app_id}"
+    # IMPORTANT: build a PATCH-specific payload instead of copying the full
+    # advancedConfigurations object returned by GET. IS 7.3 may return
+    # read-only/internal fields such as additionalSpProperties, and the
+    # Application Management PATCH API rejects those fields with APP-60506.
+    advanced = {
+        "discoverableByEndUsers": True,
+        "discoverableGroups": _discoverable_group_payload(groups),
+        # These users are pre-assigned demo users. Authorization is still
+        # enforced separately through application roles and API scopes.
+        "skipLoginConsent": True,
+        "skipLogoutConsent": True,
+    }
+
+    request(
+        "PATCH",
+        path,
+        expected=(200, 204),
+        json={
+            "accessUrl": access_url,
+            "advancedConfigurations": advanced,
+        },
+    )
+
+    updated = request("GET", path).json()
+    persisted = updated.get("advancedConfigurations") or {}
+
+    if not persisted.get("discoverableByEndUsers"):
+        raise RuntimeError(
+            f"Discoverability was not persisted for application {app_id}"
+        )
+
+    expected_group_ids = {
+        group["id"]
+        for group in groups
+        if group.get("id")
+    }
+    persisted_group_ids = {
+        group.get("id")
+        for store in persisted.get("discoverableGroups", [])
+        for group in store.get("groups", [])
+        if group.get("id")
+    }
+    if expected_group_ids and not expected_group_ids.issubset(persisted_group_ids):
+        raise RuntimeError(
+            "Discoverable Groups were not persisted as expected for "
+            f"{updated.get('name') or app_id}"
+        )
+
+    report.ok(
+        "Configured native My Account discovery for "
+        f"{updated.get('name') or app_id}"
+    )
+
+
 def find_application(display_name: str) -> dict[str, Any]:
     response = session.get(
         f"{WSO2}/api/server/v1/applications?limit=100&filter={quote(f'name eq {display_name}')}",
@@ -2133,23 +2224,71 @@ def main() -> int:
         redirect_uris=["http://inventory-agent:5001/callback"], public=True, pkce=True,
     )
     agent_workload_client = ensure_client("marketsphere-agent-workload", "Inventory Agent Workload Fallback", ["client_credentials"])
+    finance_client = ensure_client(
+        "marketsphere-finance-spa",
+        "Finance Workspace",
+        ["authorization_code", "refresh_token"],
+        redirect_uris=["http://localhost:3000/callback"],
+        public=True,
+        pkce=True,
+    )
+    security_client = ensure_client(
+        "marketsphere-security-spa",
+        "Security Operations",
+        ["authorization_code", "refresh_token"],
+        redirect_uris=["http://localhost:3000/callback"],
+        public=True,
+        pkce=True,
+    )
+    # Dedicated Microsoft/Ping-style application launcher.
+    # It is a real OIDC SPA, but it is intentionally NOT discoverable itself.
+    myapps_client = ensure_client(
+        "marketsphere-myapps-spa",
+        "Application Portal",
+        ["authorization_code", "refresh_token"],
+        redirect_uris=[
+            "http://localhost:3000/myapps/callback.html",
+            "http://localhost:3000/myapps/",
+        ],
+        public=True,
+        pkce=True,
+    )
 
     portal_app = find_application("Portal Corporativo")
+    finance_app = find_application("Finance Workspace")
+    security_app = find_application("Security Operations")
+    myapps_app = find_application("Application Portal")
     m2m_app = find_application("Orders M2M Client")
     exchange_app = find_application("Token Exchange Backend")
     agent_app = find_application("Inventory Agent Application")
     agent_workload_app = find_application("Inventory Agent Workload Fallback")
 
-    for application in (portal_app, m2m_app, exchange_app, agent_app, agent_workload_app):
+    for application in (portal_app, finance_app, security_app, m2m_app, exchange_app, agent_app, agent_workload_app):
         set_application_role_audience(application["id"])
 
     configure_oidc_protocol(portal_app["id"], browser_origin="http://localhost:3000")
+    configure_oidc_protocol(finance_app["id"], browser_origin="http://localhost:3000")
+    configure_oidc_protocol(security_app["id"], browser_origin="http://localhost:3000")
+    configure_oidc_protocol(myapps_app["id"], browser_origin="http://localhost:3000")
+    request(
+        "PATCH",
+        f"/api/server/v1/applications/{myapps_app['id']}",
+        json={
+            "advancedConfigurations": {
+                "skipLoginConsent": True,
+                "skipLogoutConsent": True,
+            }
+        },
+    )
+    report.ok("Configured Application Portal login experience")
     configure_oidc_protocol(m2m_app["id"])
     configure_oidc_protocol(exchange_app["id"], subject_token=True)
     configure_oidc_protocol(agent_app["id"])
     configure_oidc_protocol(agent_workload_app["id"])
 
     authorize_api(portal_app["id"], marketplace_api, ["portal.read", "portal.admin"])
+    authorize_api(finance_app["id"], marketplace_api, ["portal.read"])
+    authorize_api(security_app["id"], marketplace_api, ["portal.read", "portal.admin"])
     authorize_api(m2m_app["id"], marketplace_api, ["orders.read"])
     authorize_api(exchange_app["id"], downstream_api, ["downstream.read"])
     authorize_api(agent_app["id"], marketplace_api, ["inventory.read", "inventory.write"])
@@ -2165,10 +2304,42 @@ def main() -> int:
             break
     if not external_portal_groups:
         report.warn("LDAP users are available, but the external portal_users group was not returned through SCIM during bootstrap")
+    # Native WSO2 My Account catalog:
+    #   Alice -> Portal Corporativo + Finance Workspace
+    #   Carol -> Portal Corporativo + Security Operations
+    #   Bob   -> no tiles from these entitlement groups
+    ensure_discoverable_application(
+        portal_app["id"],
+        "http://localhost:3000/?launch=portal",
+        [portal_group, *external_portal_groups],
+    )
+    ensure_discoverable_application(
+        finance_app["id"],
+        "http://localhost:3000/?launch=finance",
+        [finance_group],
+    )
+    ensure_discoverable_application(
+        security_app["id"],
+        "http://localhost:3000/?launch=security",
+        [admin_group],
+    )
+
 
     ensure_role("portal-user", portal_app["id"], ["portal.read"], groups=[portal_group, *external_portal_groups])
     ensure_role("portal-admin", portal_app["id"], ["portal.read", "portal.admin"], groups=[admin_group])
     ensure_role("finance-user", portal_app["id"], ["portal.read"], groups=[finance_group])
+    ensure_role(
+        "finance-app-user",
+        finance_app["id"],
+        ["portal.read"],
+        groups=[finance_group],
+    )
+    ensure_role(
+        "security-app-admin",
+        security_app["id"],
+        ["portal.read", "portal.admin"],
+        groups=[admin_group],
+    )
     ensure_role("orders-service", m2m_app["id"], ["orders.read"])
     ensure_role("token-exchange-service", exchange_app["id"], ["downstream.read"], users=[alice])
 
@@ -2205,7 +2376,10 @@ def main() -> int:
             "downstream": {"id": downstream_api["id"], "identifier": downstream_api["identifier"]},
         },
         "clients": {
-            "portal": {"clientId": portal_client["client_id"], "redirectUri": "http://localhost:3000/callback", "postLogoutRedirectUri": "http://localhost:3000", "scopes": "openid profile email portal.read portal.admin"},
+            "portal": {"clientId": portal_client["client_id"], "redirectUri": "http://localhost:3000/callback", "postLogoutRedirectUri": "http://localhost:3000", "scopes": "openid profile email portal.read portal.admin", "resourceIdentifier": marketplace_api["identifier"], "displayName": "Portal Corporativo"},
+            "finance": {"clientId": finance_client["client_id"], "redirectUri": "http://localhost:3000/callback", "postLogoutRedirectUri": "http://localhost:3000", "scopes": "openid profile email portal.read", "resourceIdentifier": marketplace_api["identifier"], "displayName": "Finance Workspace"},
+            "security": {"clientId": security_client["client_id"], "redirectUri": "http://localhost:3000/callback", "postLogoutRedirectUri": "http://localhost:3000", "scopes": "openid profile email portal.read portal.admin", "resourceIdentifier": marketplace_api["identifier"], "displayName": "Security Operations"},
+            "appPortal": {"clientId": myapps_client["client_id"], "redirectUri": "http://localhost:3000/myapps/callback.html", "postLogoutRedirectUri": "http://localhost:3000/myapps/", "scopes": "openid profile email internal_login", "displayName": "Application Portal"},
             "m2m": {"clientId": m2m_client["client_id"], "clientSecret": client_secret(m2m_client, "M2M client"), "scope": "orders.read"},
             "tokenExchange": {"clientId": exchange_client["client_id"], "clientSecret": client_secret(exchange_client, "Token Exchange client"), "scope": "downstream.read"},
             "agentApp": {"clientId": agent_app_client["client_id"], "redirectUri": "http://inventory-agent:5001/callback", "scope": "openid inventory.read inventory.write"},

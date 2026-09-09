@@ -23,17 +23,25 @@ function decodeJwt(token) {
     return JSON.parse(new TextDecoder().decode(bytes));
   } catch { return {}; }
 }
-function validateIdToken(idToken, config, expectedNonce) {
+function validateIdToken(idToken, config, expectedNonce, appKey = "portal") {
   if (!idToken) throw new Error("The OpenID Connect response did not include an ID token");
   const claims = decodeJwt(idToken);
   const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
   if (claims.iss !== config.issuer) throw new Error("OIDC issuer validation failed");
-  if (!audiences.includes(config.clients.portal.clientId)) throw new Error("OIDC audience validation failed");
+  if (!audiences.includes(appClient(config, appKey).clientId)) throw new Error("OIDC audience validation failed");
   if (claims.nonce !== expectedNonce) throw new Error("OIDC nonce validation failed");
   if (!claims.exp || claims.exp <= Math.floor(Date.now() / 1000)) throw new Error("OIDC ID token is expired");
   return claims;
 }
 function loadTokens() { try { return JSON.parse(sessionStorage.getItem(TOKEN_KEY)) || null; } catch { return null; } }
+function appClient(config, appKey = "portal") {
+  return config.clients?.[appKey] || config.clients.portal;
+}
+const launcherScenario = {
+  portal: "overview",
+  finance: "rbac",
+  security: "agent",
+};
 
 async function api(path, { method = "GET", token, body } = {}) {
   const response = await fetch(`${API}${path}`, {
@@ -46,23 +54,24 @@ async function api(path, { method = "GET", token, body } = {}) {
   return data;
 }
 
-async function beginLogin(config) {
+async function beginLogin(config, appKey = "portal") {
+  const client = appClient(config, appKey);
   const verifier = random(48);
   const challenge = base64url(await sha256(verifier));
   const state = random(20);
   const nonce = random(20);
-  sessionStorage.setItem(PKCE_KEY, JSON.stringify({ verifier, state, nonce }));
+  sessionStorage.setItem(PKCE_KEY, JSON.stringify({ verifier, state, nonce, appKey }));
   const params = new URLSearchParams({
     response_type: "code",
-    client_id: config.clients.portal.clientId,
-    redirect_uri: config.clients.portal.redirectUri,
-    scope: config.clients.portal.scopes,
+    client_id: client.clientId,
+    redirect_uri: client.redirectUri,
+    scope: client.scopes,
     state,
     nonce,
     code_challenge: challenge,
     code_challenge_method: "S256",
-    resource: config.resources.marketplace.identifier,
   });
+  if (client.resourceIdentifier) params.set("resource", client.resourceIdentifier);
   location.assign(`${config.authorizationEndpoint}?${params}`);
 }
 
@@ -71,21 +80,24 @@ async function finishLogin(config) {
   const code = params.get("code");
   if (!code) return null;
   const saved = JSON.parse(sessionStorage.getItem(PKCE_KEY) || "{}");
+  const appKey = saved.appKey || "portal";
+  const client = appClient(config, appKey);
   if (!saved.verifier || saved.state !== params.get("state")) throw new Error("OIDC state/PKCE validation failed");
   const body = new URLSearchParams({
     grant_type: "authorization_code",
-    client_id: config.clients.portal.clientId,
-    redirect_uri: config.clients.portal.redirectUri,
+    client_id: client.clientId,
+    redirect_uri: client.redirectUri,
     code,
     code_verifier: saved.verifier,
   });
   const response = await fetch(config.tokenEndpoint, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
   const tokens = await response.json();
   if (!response.ok) throw new Error(tokens.error_description || tokens.error || "Authorization code exchange failed");
-  validateIdToken(tokens.id_token, config, saved.nonce);
+  validateIdToken(tokens.id_token, config, saved.nonce, appKey);
+  tokens.__appKey = appKey;
   sessionStorage.setItem(TOKEN_KEY, JSON.stringify(tokens));
   sessionStorage.removeItem(PKCE_KEY);
-  history.replaceState({}, "", "/");
+  history.replaceState({}, "", `/?app=${encodeURIComponent(appKey)}`);
   return tokens;
 }
 
@@ -120,7 +132,11 @@ function App() {
   const [config, setConfig] = useState(null);
   const [status, setStatus] = useState(null);
   const [tokens, setTokens] = useState(loadTokens);
-  const [active, setActive] = useState("overview");
+  const [active, setActive] = useState(() => {
+    const query = new URLSearchParams(location.search);
+    const requested = query.get("launch") || query.get("app") || "portal";
+    return launcherScenario[requested] || "overview";
+  });
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -132,7 +148,19 @@ function App() {
         const loaded = await api("/api/config");
         setConfig(loaded);
         const completed = await finishLogin(loaded);
-        if (completed) setTokens(completed);
+        if (completed) {
+          setTokens(completed);
+          setActive(launcherScenario[completed.__appKey] || "overview");
+        } else {
+          const requestedApp = new URLSearchParams(location.search).get("launch");
+          if (requestedApp && loaded.clients?.[requestedApp]) {
+            // My Account has already authenticated the browser. Starting the
+            // selected registered OIDC app now demonstrates SSO session reuse.
+            setActive(launcherScenario[requestedApp] || "overview");
+            await beginLogin(loaded, requestedApp);
+            return;
+          }
+        }
         setStatus(await api("/api/status"));
       } catch (e) { setBootError(e); }
     })();
@@ -151,7 +179,8 @@ function App() {
   function logout() {
     sessionStorage.removeItem(TOKEN_KEY); setTokens(null);
     if (tokens?.id_token) {
-      const params = new URLSearchParams({ id_token_hint: tokens.id_token, post_logout_redirect_uri: config.clients.portal.postLogoutRedirectUri });
+      const client = appClient(config, tokens.__appKey || "portal");
+      const params = new URLSearchParams({ id_token_hint: tokens.id_token, post_logout_redirect_uri: client.postLogoutRedirectUri });
       location.assign(`${config.logoutEndpoint}?${params}`);
     }
   }

@@ -44,6 +44,26 @@ token_persistence_processor = "org.wso2.carbon.identity.oauth.tokenprocessor.Pla
 [oauth.oidc]
 id_token.signature_algorithm = "SHA256withRSA"
 
+[myaccount]
+applications.enabled = true
+applications.disabled_features = []
+applications.scopes.create = []
+applications.scopes.read = []
+applications.scopes.update = []
+applications.scopes.delete = []
+route_paths.home = "/overview"
+ui.app_name = "My Account"
+ui.app_title = "My Account | WSO2 Identity Server"
+overview.enabled = true
+personal_info.enabled = true
+security.enabled = true
+approvals.enabled = true
+approvals.disabled_features = []
+approvals.scopes.create = []
+approvals.scopes.read = []
+approvals.scopes.update = []
+approvals.scopes.delete = []
+
 [transport.https.properties]
 proxyPort = 9443
 
