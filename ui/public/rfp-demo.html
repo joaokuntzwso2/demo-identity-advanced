@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketSphere — WSO2 Identity Server 7.3 RFP Demo Center</title>
+  <style>
+    :root{
+      --bg:#0b0d10;--panel:#11151a;--panel2:#171c22;--line:#2b333d;
+      --text:#f5f7f9;--muted:#a6b0bb;--accent:#f15a29;
+      --ok:#38d996;--configured:#66b3ff;--platform:#c4a7ff;
+      --comp:#ffc857;--arch:#ff8fab;--contract:#a8b0b8;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:linear-gradient(180deg,#090b0e 0%,#0d1116 100%);color:var(--text);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .wrap{max-width:1500px;margin:0 auto;padding:36px 40px 80px}
+    header{display:flex;align-items:flex-start;justify-content:space-between;gap:32px;margin-bottom:28px}
+    .eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:800}
+    h1{font-size:36px;line-height:1.08;margin:8px 0 10px;letter-spacing:-.03em}
+    h2{font-size:23px;margin:0 0 16px}
+    h3{font-size:16px;margin:0 0 8px}
+    p{color:var(--muted);line-height:1.55}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{display:inline-block;text-decoration:none;color:#fff;border:1px solid var(--line);background:var(--panel2);
+      padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700}
+    .btn.primary{background:var(--accent);border-color:var(--accent)}
+    .grid{display:grid;gap:16px}
+    .metrics{grid-template-columns:repeat(5,minmax(0,1fr));margin:22px 0 30px}
+    .metric,.card{background:rgba(17,21,26,.94);border:1px solid var(--line);border-radius:14px}
+    .metric{padding:18px}
+    .metric .n{font-size:29px;font-weight:800;letter-spacing:-.03em}
+    .metric .l{font-size:12px;color:var(--muted);margin-top:5px}
+    .section{margin-top:26px}
+    .card{padding:20px}
+    .tree{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .node{background:var(--panel2);border:1px solid var(--line);padding:14px;border-radius:12px;margin:8px 0}
+    .node .depth{color:var(--accent);font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:800}
+    .node .id{font-size:10px;color:#7f8a96;word-break:break-all}
+    .children{margin-left:18px;padding-left:14px;border-left:2px solid #313a45}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;color:#cbd3db;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:11px 10px;border-bottom:1px solid var(--line)}
+    td{padding:11px 10px;border-bottom:1px solid #20262d;vertical-align:top}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#9ba7b3}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.05em}
+    .LIVE{background:rgba(56,217,150,.14);color:var(--ok);border:1px solid rgba(56,217,150,.3)}
+    .CONFIGURED{background:rgba(102,179,255,.13);color:var(--configured);border:1px solid rgba(102,179,255,.3)}
+    .PLATFORM{background:rgba(196,167,255,.12);color:var(--platform);border:1px solid rgba(196,167,255,.3)}
+    .COMPLEMENTARY{background:rgba(255,200,87,.12);color:var(--comp);border:1px solid rgba(255,200,87,.3)}
+    .ARCHITECTURE{background:rgba(255,143,171,.12);color:var(--arch);border:1px solid rgba(255,143,171,.3)}
+    .CONTRACTUAL{background:rgba(168,176,184,.12);color:var(--contract);border:1px solid rgba(168,176,184,.3)}
+    .legend{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 15px}
+    .proof{border-left:4px solid var(--accent);background:rgba(241,90,41,.07)}
+    .proof strong{color:#fff}
+    .coverage{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .req{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}
+    .req-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .req-id{font-size:11px;font-weight:900;color:var(--accent)}
+    .req p{font-size:12px;margin:8px 0 0}
+    .error{padding:20px;border:1px solid #8d2f2f;background:#2c1414;border-radius:12px;color:#ffb1b1}
+    footer{margin-top:32px;color:#77828e;font-size:11px}
+    @media(max-width:1050px){.metrics{grid-template-columns:repeat(2,1fr)}.coverage{grid-template-columns:1fr 1fr}.tree{grid-template-columns:1fr}}
+    @media(max-width:650px){.wrap{padding:24px 16px}.metrics,.coverage{grid-template-columns:1fr}header{display:block}.actions{margin-top:18px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">WSO2 Identity Server 7.3 · Customer architecture demo</div>
+      <h1>RFP Demo Center</h1>
+      <p>Live provisioned evidence, B2B hierarchy, isolation and an explicit distinction between runtime proof and platform/architectural evidence.</p>
+    </div>
+    <div class="actions">
+      <a class="btn primary" href="/">Open main demo</a>
+      <a class="btn" href="https://localhost:9443/console" target="_blank" rel="noreferrer">WSO2 Console</a>
+      <a class="btn" href="https://localhost:9443/myaccount" target="_blank" rel="noreferrer">My Account</a>
+    </div>
+  </header>
+
+  <div id="app"><div class="card">Loading runtime evidence…</div></div>
+
+  <footer>
+    This page renders bootstrap-generated state. “Platform”, “Architecture”, “Complementary” and “Contractual” items are intentionally not represented as fake live transactions.
+  </footer>
+</div>
+
+<script>
+const esc = (v="") => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+function renderNode(n){
+  return `<div class="node">
+    <div class="depth">Hierarchy level ${esc(n.depth)}</div>
+    <h3>${esc(n.name)}</h3>
+    <div class="id">${esc(n.id || '')}</div>
+    ${n.children?.length ? `<div class="children">${n.children.map(renderNode).join('')}</div>` : ''}
+  </div>`;
+}
+function badge(status){ return `<span class="badge ${esc(status)}">${esc(status)}</span>`; }
+
+async function run(){
+  const host = location.hostname || 'localhost';
+  const api = `http://${host}:4000/api/config`;
+  const root = document.getElementById('app');
+  try{
+    const r = await fetch(api);
+    if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const cfg = await r.json();
+    const b = cfg.b2b;
+    const rfp = cfg.rfp;
+    if(!b?.ready || !rfp?.requirements) throw new Error('B2B/RFP bootstrap data is missing.');
+
+    const live = [...rfp.requirements, ...(rfp.extendedRequirements||[])].filter(x=>x.status==='LIVE').length;
+    const all = rfp.requirements.length + (rfp.extendedRequirements||[]).length;
+
+    root.innerHTML = `
+      <div class="grid metrics">
+        <div class="metric"><div class="n">${b.organizations.length}</div><div class="l">B2B organizations</div></div>
+        <div class="metric"><div class="n">3</div><div class="l">Hierarchy levels</div></div>
+        <div class="metric"><div class="n">${b.residentUsers.length}</div><div class="l">Resident users</div></div>
+        <div class="metric"><div class="n">${b.organizationApplications.length}</div><div class="l">Organization-local apps</div></div>
+        <div class="metric"><div class="n">${live}/${all}</div><div class="l">Items explicitly live in this POC</div></div>
+      </div>
+
+      <section class="section">
+        <div class="card">
+          <div class="eyebrow">RF-15 · B2B Organizations</div>
+          <h2>Multi-level organization hierarchy</h2>
+          <p>Provisioned through WSO2 Organization APIs and administered through a scoped M2M client using Organization Switch.</p>
+          <div class="tree">${b.hierarchy.map(renderNode).join('')}</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="card proof">
+          <div class="eyebrow">Isolation proof</div>
+          <h2>Same names, different organization contexts</h2>
+          <p><strong>User:</strong> “${esc(b.isolationProof.sameUsername)}” exists independently in ${b.isolationProof.userOrganizations.map(esc).join(' and ')}.</p>
+          <p><strong>Application:</strong> “${esc(b.isolationProof.sameApplicationName)}” exists independently in ${b.isolationProof.applicationOrganizations.map(esc).join(' and ')}.</p>
+          <p>${esc(b.isolationProof.statement)}</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="card">
+          <div class="eyebrow">Resident identities</div>
+          <h2>Users created inside organizations</h2>
+          <table><thead><tr><th>Organization</th><th>User</th><th>Email</th><th>WSO2 object ID</th></tr></thead>
+          <tbody>${b.residentUsers.map(u=>`<tr><td>${esc(u.organization)}</td><td><strong>${esc(u.username)}</strong></td><td>${esc(u.email)}</td><td class="mono">${esc(u.id||'')}</td></tr>`).join('')}</tbody></table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="card">
+          <div class="eyebrow">Organization-local applications</div>
+          <h2>Applications owned at different hierarchy levels</h2>
+          <table><thead><tr><th>Organization</th><th>Application</th><th>Description</th><th>WSO2 object ID</th></tr></thead>
+          <tbody>${b.organizationApplications.map(a=>`<tr><td>${esc(a.organization)}</td><td><strong>${esc(a.name)}</strong></td><td>${esc(a.description)}</td><td class="mono">${esc(a.id||'')}</td></tr>`).join('')}</tbody></table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="card">
+          <div class="eyebrow">RFP coverage · RF-01—RF-21</div>
+          <h2>What the audience is seeing vs. what must remain evidence</h2>
+          <div class="legend">${Object.entries(rfp.legend).map(([s,d])=>`${badge(s)} <span style="font-size:11px;color:#8994a0">${esc(d)}</span>`).join('')}</div>
+          <div class="coverage">${rfp.requirements.map(x=>`<div class="req"><div class="req-top"><span class="req-id">${esc(x.id)}</span>${badge(x.status)}</div><h3>${esc(x.name)}</h3><p>${esc(x.evidence)}</p></div>`).join('')}</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="card">
+          <div class="eyebrow">Extended RFP capabilities</div>
+          <h2>Authentication, users, B2B, Agentic ID, branding and APIs</h2>
+          <div class="coverage">${(rfp.extendedRequirements||[]).map(x=>`<div class="req"><div class="req-top"><span></span>${badge(x.status)}</div><h3>${esc(x.name)}</h3><p>${esc(x.evidence)}</p></div>`).join('')}</div>
+        </div>
+      </section>
+    `;
+  }catch(e){
+    root.innerHTML = `<div class="error"><strong>RFP Demo Center is not ready.</strong><br>${esc(e.message)}<br><br>Run <code>./scripts/validate-rfp-demo.sh</code> and inspect <code>docker compose logs bootstrap</code>.</div>`;
+  }
+}
+run();
+</script>
+</body>
+</html>

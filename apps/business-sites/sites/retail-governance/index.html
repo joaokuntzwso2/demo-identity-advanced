@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Retail Governance Console</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div><strong>Retail Governance Console</strong><br><span>MarketSphere Retail Brazil</span></div>
+  <span id="status" class="pill">Not authenticated</span>
+</header>
+<div class="wrap">
+  <section class="hero">
+    <span class="eyebrow">Organization-local OIDC application</span>
+    <h1>Retail Governance Console</h1>
+    <p>Policy governance, delegated administration and retail partner oversight. This is a distinct relying party registered inside <strong>MarketSphere Retail Brazil</strong>, with its own OIDC client, redirect URI and mandatory PKCE.</p>
+    <div class="actions">
+      <button class="btn" id="login">Sign in with WSO2</button>
+      <button class="btn secondary" id="logout" hidden>Sign out locally</button>
+    </div>
+    <div id="session" hidden>
+      <div class="label">Signed-in principal</div>
+      <div id="who" class="user"></div>
+    </div>
+  </section>
+
+  <div class="grid"><div class="card"><div class="label">Active partners</div><div class="metric">24</div></div><div class="card"><div class="label">Pending reviews</div><div class="metric">5</div></div><div class="card"><div class="label">Policy exceptions</div><div class="metric">2</div></div></div>
+
+  <div class="grid">
+    <div class="card"><strong>Organization</strong><p>MarketSphere Retail Brazil</p></div>
+    <div class="card"><strong>Protocol</strong><p>OAuth 2.0 / OpenID Connect<br>Authorization Code + PKCE</p></div>
+    <div class="card"><strong>Client ID</strong><div id="clientId" class="mono">Loading…</div></div>
+    <div class="card"><strong>Redirect URI</strong><div id="redirectUri" class="mono">Loading…</div></div>
+    <div class="card"><strong>Organization ID</strong><div id="orgId" class="mono">Loading…</div></div>
+  </div>
+
+  <h2>Identity issued by WSO2</h2>
+  <pre id="claims" class="claims">{}</pre>
+  <pre id="error" class="error" hidden></pre>
+</div>
+<script src="/b2b-oidc.js"></script>
+</body>
+</html>

@@ -135,6 +135,31 @@ services:
     ports:
       - "3000:80"
 
+  business-apps:
+    build: ./apps/business-sites
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      marketplace-api:
+        condition: service_healthy
+    ports:
+      - "3100:3100"
+      - "3101:3101"
+      - "3102:3102"
+      - "3201:3201"
+      - "3202:3202"
+      - "3203:3203"
+      - "3204:3204"
+      - "3205:3205"
+      - "3206:3206"
+      - "3207:3207"
+      - "3208:3208"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:3100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
 volumes:
   wso2_data:
   runtime_config:

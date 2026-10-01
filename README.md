@@ -1588,8 +1588,6 @@ The project does not currently demonstrate:
 * Account recovery
 * Approval workflows
 * Consent-management workflows
-* B2B organizations
-* Delegated administration
 * SCIM outbound provisioning
 * User lifecycle synchronization
 * FAPI
@@ -1625,3 +1623,387 @@ The POC is considered successfully validated when:
 * The agent API returns `decision: allow`.
 * Inventory reconciliation returns `status: COMPLETED`.
 * The UI shows the business-level agent result and retains technical details for inspection.
+
+<!-- CUSTOMER-RFP-DEMO-START -->
+
+---
+
+## Customer RFP / B2B demonstration profile
+
+This repository includes an extended customer demonstration profile for **WSO2 Identity Server 7.3**.
+
+The original scenarios remain unchanged:
+
+- Authorization Code + PKCE
+- OIDC and JWT validation
+- local RBAC allow/deny
+- secondary OpenLDAP user store
+- external Keycloak OIDC federation
+- Client Credentials / service identity
+- OAuth 2.0 Token Exchange (RFC 8693)
+- first-class Agent Identity plus dedicated workload credentials
+- native My Account application discovery
+
+A second bootstrap phase, `bootstrap/rfp_extension.py`, adds the customer-specific B2B organization model.
+
+### B2B hierarchy
+
+```text
+MarketSphere Retail Brazil
+├── Seller Alpha Commerce
+│   └── Seller Alpha Logistics
+└── Partner Fintech LATAM
+
+MarketSphere International
+└── Marketplace Mexico
+```
+
+The extension provisions:
+
+- **6 organizations** across **3 hierarchy levels**
+- **8 resident organization users**
+- **8 organization-local applications**
+- the username `operator` independently in Seller Alpha Commerce and Marketplace Mexico
+- the application name `Partner Storefront` independently in Seller Alpha Commerce and Marketplace Mexico
+
+The duplicate names are intentional isolation evidence: they resolve to different WSO2 IDs inside different organization contexts.
+
+### Organization-management flow
+
+The B2B bootstrap uses the supported organization-management pattern:
+
+```text
+MarketSphere B2B Bootstrap Client
+  → Client Credentials
+  → API Authorization
+  → create/view organizations in the root context
+  → application sharing
+  → Organization Switch
+  → /o/scim2/Users
+  → /o/api/server/v1/applications
+  → /o/api/server/v1/organizations
+```
+
+The application is first configured with Client Credentials. Organization Switch is enabled only after the application has been shared with at least one organization.
+
+### RFP Demo Center
+
+Open:
+
+```text
+http://localhost:3000/rfp-demo.html
+```
+
+The page distinguishes:
+
+- `LIVE` — materialized and executable/inspectable in this demo
+- `CONFIGURED` — materialized configuration without a dedicated staged transaction
+- `PLATFORM` — native product capability shown as evidence, not simulated
+- `COMPLEMENTARY` — requires the complementary WSO2 product identified in the RFP response
+- `ARCHITECTURE` — deployment/scale property, not meaningfully proven on one laptop
+- `CONTRACTUAL` — commercial/support commitment, not a runtime feature
+
+This distinction is intentional. The demo does not fake real SMS delivery, a hardware-backed passkey, a complete enterprise DSAR workflow, APIM API-key lifecycle, Black-Friday capacity, or contractual SLA.
+
+### Full automated preflight
+
+Run:
+
+```bash
+./scripts/test-e2e-rfp.sh
+```
+
+This executes the repository's existing smoke suite and the customer-specific RFP/B2B validation.
+
+For only the B2B/RFP checks:
+
+```bash
+./scripts/validate-rfp-demo.sh
+```
+
+Presenter shortcuts:
+
+```bash
+./scripts/customer-demo.sh urls
+./scripts/customer-demo.sh preflight
+./scripts/customer-demo.sh logs
+```
+
+### Full demonstration runbook
+
+See:
+
+```text
+docs/CUSTOMER_RFP_DEMO.md
+```
+
+It contains both a short executive path and the complete technical path.
+
+### Clean-room validation before sharing the repository
+
+First validate against existing persisted state:
+
+```bash
+docker compose up --build -d
+./scripts/test-e2e-rfp.sh
+```
+
+Only after that succeeds, validate reproducibility from zero:
+
+```bash
+docker compose down -v --remove-orphans
+docker compose up --build -d
+docker compose logs -f bootstrap
+./scripts/test-e2e-rfp.sh
+```
+
+A successful extended bootstrap ends with:
+
+```text
+[rfp-bootstrap] CUSTOMER RFP DEMO READY
+[rfp-bootstrap] 6 organizations / 3 levels
+[rfp-bootstrap] 8 resident users
+[rfp-bootstrap] 8 organization-local applications
+[rfp-bootstrap] B2B isolation proof populated
+```
+
+<!-- CUSTOMER-RFP-DEMO-END -->
+
+> **B2B application sharing:** the bootstrap uses WSO2 IS 7.3 `POST /api/server/v1/applications/share-with-all` with policy `ALL_EXISTING_AND_FUTURE_ORGS`. `Organization Switch` is enabled only after the management application is shared.
+
+### Bootstrap idempotency validation
+
+Before a customer presentation or before sharing the repository, validate that
+the generated IAM state can be reconciled more than once:
+
+```bash
+./scripts/test-bootstrap-idempotency.sh
+```
+
+The test force-recreates the bootstrap container twice against the same WSO2
+persistent state. Both runs must exit with code `0` and print
+`CUSTOMER RFP DEMO READY`.
+
+The B2B extension obtains a fresh Organization Switch token immediately before
+organization-scoped SCIM and application-management operations. Organization
+Switch tokens are treated as short-lived organization-context credentials
+rather than cached across the whole bootstrap.
+
+## Demo privileged-access boundary
+
+The customer demo intentionally uses a strict privilege boundary:
+
+- root `admin` is shared with **all existing and future organizations**;
+- root `admin` receives the **Administrator** role of the WSO2 **Console** application in every organization;
+- this grants root `admin` full Console access after switching organization context;
+- `alice`, `bob`, and `carol` are explicitly kept out of organization shared access;
+- B2B resident users remain resident in their own organization and are not assigned the Console Administrator role by the bootstrap.
+
+The provisioning stage uses the supported **User Sharing API v2** and policy:
+
+```text
+ALL_EXISTING_AND_FUTURE_ORGS
+```
+
+with a selected role assignment:
+
+```text
+Console / Administrator
+```
+
+Emergency/idempotent repair:
+
+```bash
+./scripts/ensure-admin-access.sh
+```
+
+Read-only validation:
+
+```bash
+./scripts/verify-admin-boundary.sh
+```
+
+After provisioning or repairing access, **log out of WSO2 Console and log back in as `admin`** so the browser session receives the updated organization access.
+
+Expected UI navigation:
+
+```text
+Root / Super
+├── MarketSphere Retail Brazil          [Switch]
+│   ├── Seller Alpha Commerce           [Switch]
+│   │   └── Seller Alpha Logistics      [Switch]
+│   └── Partner Fintech LATAM           [Switch]
+└── MarketSphere International          [Switch]
+    └── Marketplace Mexico              [Switch]
+```
+
+From each organization context, `admin` can inspect and manage users,
+applications, roles, identity providers, login configuration, branding and
+child organizations according to the Console Administrator permissions.
+
+The other demo users are intentionally not global administrators. This is a
+least-privilege demonstration, not six copies of the root super administrator.
+
+### Demo-day preflight
+
+Before the customer session run:
+
+```bash
+./scripts/demo-day-preflight.sh
+```
+
+The preflight checks Docker, known port conflicts, bootstrap completion, the
+root-admin privilege boundary, repository smoke tests, RFP/B2B state and all
+customer-facing HTTP surfaces. It finishes with `DEMO DAY READY` only when all
+checks pass.
+
+## Distinct application topology
+
+The demo uses independent addresses for independent browser applications:
+
+```text
+Portal Corporativo       http://localhost:3000/
+Application Portal       http://localhost:3100/
+Finance Workspace        http://localhost:3101/
+Security Operations      http://localhost:3102/
+```
+
+`Application Portal`, `Finance Workspace`, and `Security Operations` are
+separate WSO2 applications with separate client IDs and redirect URIs. Finance
+and Security run Authorization Code + PKCE from their own origins. The
+Application Portal uses WSO2's native discoverable-application API and opens
+the entitled application at its own URL; an existing WSO2 SSO session makes
+the subsequent application login seamless while preserving the independent
+OIDC client boundary.
+
+The B2B organization applications also have unique addresses:
+
+```text
+3201  Retail Governance Console      MarketSphere Retail Brazil
+3202  Partner Storefront             Seller Alpha Commerce
+3203  Seller Backoffice              Seller Alpha Commerce
+3204  Settlement Service             Partner Fintech LATAM
+3205  Logistics Integration          Seller Alpha Logistics
+3206  International Partner Console  MarketSphere International
+3207  Partner Storefront             Marketplace Mexico
+3208  Mexico Operations              Marketplace Mexico
+```
+
+The two `Partner Storefront` entries deliberately keep the same display name,
+but have different WSO2 IDs, owning organizations and URLs. This is the B2B
+namespace/isolation demonstration.
+
+The following registered applications intentionally remain non-browser
+workloads because they represent machine or agent identities:
+
+```text
+Orders M2M Client
+Token Exchange Backend
+Inventory Agent Application
+Inventory Agent Workload Fallback
+MarketSphere B2B Bootstrap Client
+```
+
+Giving those clients fake web sites would misrepresent their role.
+
+Validate the topology with:
+
+```bash
+./scripts/validate-multi-apps.sh
+```
+
+### UI test flow for distinct applications
+
+1. Open `http://localhost:3100/` and sign in to the Application Portal.
+2. With Alice, the catalog should expose the applications allowed by her
+   discoverability groups, including Finance Workspace.
+3. Open Finance Workspace. It launches `http://localhost:3101/`, performs its
+   own OIDC Authorization Code + PKCE flow, reuses the WSO2 SSO session, and
+   calls the finance-specific protected API.
+4. With Carol, use Application Portal to launch Security Operations at
+   `http://localhost:3102/`; it requires the Security application entitlement
+   plus `portal.read` and `portal.admin`.
+5. In WSO2 Console as root `admin`, switch among the B2B organizations and
+   inspect each application `Access URL`. The eight organization-local apps
+   point to `3201` through `3208`, not to the main MarketSphere portal.
+
+### Root admin Console traversal — explicit role assignment
+
+The demo uses a strict access boundary:
+
+```text
+admin
+  -> shared to ALL_EXISTING_AND_FUTURE_ORGS
+  -> shared/shadow user in each organization
+  -> Organization Switch
+  -> SCIM2 Roles API
+  -> Console / Administrator membership in each organization
+
+alice / bob / carol
+  -> no B2B shared access
+
+B2B resident users
+  -> organization-local
+  -> no Console Administrator assignment from bootstrap
+```
+
+User sharing and Console authorization are treated as separate operations.
+The bootstrap explicitly assigns the shared `admin` identity to the Console
+`Administrator` application role inside each organization.
+
+Validation:
+
+```bash
+./scripts/ensure-admin-access.sh
+./scripts/verify-admin-boundary.sh
+```
+
+After changing organization access, fully sign out of the WSO2 Console and
+sign in again as `admin` before testing the **Switch** control.
+
+## B2B applications are real OIDC relying parties
+
+The eight organization-local browser applications are not placeholder
+Application Management records. Each has its own organization-scoped WSO2
+OIDC client:
+
+```text
+Retail Governance Console       :3201
+Partner Storefront / Seller     :3202
+Seller Backoffice               :3203
+Settlement Service              :3204
+Logistics Integration           :3205
+International Partner Console   :3206
+Partner Storefront / Mexico     :3207
+Mexico Operations               :3208
+```
+
+Each client is configured as:
+
+```text
+OAuth 2.0 / OpenID Connect
+Authorization Code
+Public client
+PKCE mandatory (S256)
+Unique callback URL
+Unique JavaScript origin
+Organization-specific authorize/token endpoint
+```
+
+The browser initiates authentication directly against:
+
+```text
+https://localhost:9443/t/carbon.super/o/<ORG_ID>/oauth2/authorize
+```
+
+and exchanges the code with:
+
+```text
+https://localhost:9443/t/carbon.super/o/<ORG_ID>/oauth2/token
+```
+
+Validation:
+
+```bash
+./scripts/validate-b2b-oidc.sh
+```

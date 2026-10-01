@@ -171,7 +171,10 @@ function publicConfig(config) {
           }
         : undefined,
     },
-    demoUsers: config.demoUsers,
+    demoUsers: (config.demoUsers || []).map(({ password: _password, ...user }) => user),
+    applicationTopology: config.applicationTopology,
+    b2b: config.b2b,
+    rfp: config.rfp,
     bootstrap: config.bootstrap,
   };
 }
@@ -179,7 +182,7 @@ function publicConfig(config) {
 const app = express();
 app.disable("x-powered-by");
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors({ origin: ["http://localhost:3000"], credentials: false }));
+app.use(cors({ origin: ["http://localhost:3000", "http://localhost:3100", "http://localhost:3101", "http://localhost:3102"], credentials: false }));
 app.use(express.json({ limit: "200kb" }));
 app.use(morgan("combined"));
 
@@ -228,6 +231,30 @@ app.get(
   }),
 );
 
+app.get(
+  "/api/finance",
+  authenticate,
+  requireScope("portal.read"),
+  requireEntitlement({ groups: ["finance_users"], roles: ["finance-app-user"] }),
+  (req, res) => res.json({
+    decision: "allow",
+    workspace: "Finance Workspace",
+    principal: req.principal,
+    summary: { treasuryPosition: "R$ 18.4M", pendingApprovals: 7, settlementsToday: 42, dataClassification: "Restricted" },
+  }),
+);
+app.get(
+  "/api/security",
+  authenticate,
+  requireScope("portal.read", "portal.admin"),
+  requireEntitlement({ groups: ["portal_admins"], roles: ["security-app-admin"] }),
+  (req, res) => res.json({
+    decision: "allow",
+    workspace: "Security Operations",
+    principal: req.principal,
+    summary: { activeAlerts: 4, privilegedSessions: 2, blockedAttempts: 17, dataClassification: "Confidential" },
+  }),
+);
 app.get(
   "/api/admin",
   authenticate,
