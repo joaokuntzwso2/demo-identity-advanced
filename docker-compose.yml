@@ -39,7 +39,7 @@ services:
       retries: 30
 
   wso2is:
-    image: wso2/wso2is:7.3.0
+    image: ${WSO2_IS_IMAGE:-wso2/wso2is:7.3.0}
     hostname: localhost
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1024m"

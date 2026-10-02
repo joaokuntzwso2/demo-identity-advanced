@@ -9,5 +9,7 @@ COPY multi_app_extension.py .
 COPY b2b_oidc_extension.py .
 COPY b2b_resource_extension.py .
 COPY b2b_resource_isolation_test.py .
+COPY lgpd_consent_extension.py .
+COPY app_specific_mfa_extension.py .
 COPY agent_mcp_ciba_extension.py .
-CMD ["sh", "-c", "python -u bootstrap.py && python -u rfp_extension.py && python -u admin_boundary.py && python -u multi_app_extension.py && python -u b2b_oidc_extension.py && python -u b2b_resource_extension.py && python -u agent_mcp_ciba_extension.py"]
+CMD ["sh", "-c", "python -u bootstrap.py && python -u rfp_extension.py && python -u admin_boundary.py && python -u multi_app_extension.py && python -u b2b_oidc_extension.py && python -u b2b_resource_extension.py && python -u lgpd_consent_extension.py && python -u app_specific_mfa_extension.py && python -u agent_mcp_ciba_extension.py"]

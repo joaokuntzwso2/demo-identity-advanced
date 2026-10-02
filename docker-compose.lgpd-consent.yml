@@ -1,0 +1,32 @@
+services:
+  wso2is:
+    volumes:
+      - ./platform/wso2/deployment-lgpd.toml:/home/wso2carbon/wso2is-7.3.0/repository/conf/deployment.toml:ro
+
+  bootstrap:
+    environment:
+      ENABLE_LGPD_CONSENT_DEMO: "true"
+      WSO2_IS_UPDATE_LEVEL: ${WSO2_IS_UPDATE_LEVEL:?Set WSO2_IS_UPDATE_LEVEL to 12 or later}
+      LGPD_CONSENT_APP: ${LGPD_CONSENT_APP:-Portal Corporativo}
+
+  consent-audit:
+    build:
+      context: ./services/consent-audit
+    environment:
+      PORT: "8300"
+      REQUIRE_WEBHOOK_SIGNATURE: "true"
+      CONSENT_WEBHOOK_SECRET: ${CONSENT_WEBHOOK_SECRET:?Set CONSENT_WEBHOOK_SECRET}
+      CONSENT_EVENT_FILE: /data/events.ndjson
+    ports:
+      - "8300:8300"
+    volumes:
+      - consent-audit-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8300/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  consent-audit-data:

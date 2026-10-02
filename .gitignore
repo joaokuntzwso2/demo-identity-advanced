@@ -459,3 +459,5 @@ shell_session*
 .zsh_sessions/
 
 nohup.out
+
+.lgpd-consent.env

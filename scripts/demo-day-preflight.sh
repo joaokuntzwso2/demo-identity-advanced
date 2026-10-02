@@ -102,3 +102,12 @@ echo
 echo "[agent-mcp] Validating Agent Identity + MCP least-privilege path"
 ./scripts/validate-agent-mcp-ciba.sh
 
+echo
+echo "[app-mfa] Validating per-application MFA/adaptive authentication"
+./scripts/validate-app-specific-mfa.sh
+
+if [[ "${ENABLE_LGPD_CONSENT_DEMO:-false}" == "true" ]]; then
+  echo
+  echo "[lgpd-consent] Validating Consent Management v2 scenario"
+  ./scripts/validate-lgpd-consent.sh
+fi
