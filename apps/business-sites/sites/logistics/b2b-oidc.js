@@ -43,6 +43,9 @@ function findApp(cfg) {
   if (!app.clientId || !app.authorizationEndpoint || !app.tokenEndpoint) {
     throw new Error("This B2B app has not been OIDC-provisioned yet.");
   }
+  if (!app.resourceApiPath || !app.negativeResourceApiPath) {
+    throw new Error("This B2B app has not been mapped to its protected resource yet.");
+  }
   return app;
 }
 async function beginLogin(app) {
@@ -117,6 +120,96 @@ function renderIdentity(app, tokens) {
   $("login").hidden = true;
   $("logout").hidden = false;
 }
+function ensureResourcePanel(app) {
+  if (document.getElementById("protectedResourcePanel")) return;
+
+  const host = document.querySelector(".wrap") || document.body;
+  const section = document.createElement("section");
+  section.id = "protectedResourcePanel";
+  section.className = "hero";
+  section.style.marginTop = "22px";
+  section.innerHTML = `
+    <span class="eyebrow">RF-15 • Protected-resource isolation</span>
+    <h2>Organization-bound protected API</h2>
+    <p>
+      WSO2 validates the access token. The API then enforces that the signed
+      <code>org_id</code> claim matches the organization that owns the resource.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <strong>Own organization API</strong>
+        <div class="mono">${app.resourceApiPath}</div>
+        <div id="ownResourceStatus" style="margin-top:10px">Sign in to test.</div>
+      </div>
+      <div class="card">
+        <strong>Cross-organization negative proof</strong>
+        <div class="mono">${app.negativeResourceApiPath}</div>
+        <div id="crossResourceStatus" style="margin-top:10px">Not tested.</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn secondary" id="crossOrgTest" disabled>
+        Try cross-organization access (expected 403)
+      </button>
+    </div>
+    <pre id="resourcePayload" class="claims">{}</pre>
+  `;
+  host.appendChild(section);
+}
+async function invokeResource(path, token) {
+  const response = await fetch(`${API}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const text = await response.text();
+  let payload = {};
+  try { payload = text ? JSON.parse(text) : {}; }
+  catch { payload = { raw: text }; }
+  return { response, payload };
+}
+async function loadOwnResource(app, tokens) {
+  const { response, payload } = await invokeResource(
+    app.resourceApiPath, tokens.access_token
+  );
+  const status = document.getElementById("ownResourceStatus");
+  const output = document.getElementById("resourcePayload");
+
+  if (response.ok) {
+    status.textContent = `Allowed • HTTP ${response.status}`;
+    status.style.color = "#196c43";
+  } else {
+    status.textContent = `Unexpected denial • HTTP ${response.status}`;
+    status.style.color = "#9b1c1c";
+  }
+  output.textContent = JSON.stringify(payload, null, 2);
+}
+async function runCrossOrgTest(app, tokens) {
+  const button = document.getElementById("crossOrgTest");
+  const status = document.getElementById("crossResourceStatus");
+  const output = document.getElementById("resourcePayload");
+
+  button.disabled = true;
+  status.textContent = "Testing…";
+
+  try {
+    const { response, payload } = await invokeResource(
+      app.negativeResourceApiPath, tokens.access_token
+    );
+
+    if (
+      response.status === 403 &&
+      payload.code === "cross_organization_access_denied"
+    ) {
+      status.textContent = "Correctly denied • HTTP 403";
+      status.style.color = "#196c43";
+    } else {
+      status.textContent = `UNEXPECTED • HTTP ${response.status}`;
+      status.style.color = "#9b1c1c";
+    }
+    output.textContent = JSON.stringify(payload, null, 2);
+  } finally {
+    button.disabled = false;
+  }
+}
 function logout() {
   sessionStorage.removeItem(tokenKey);
   location.assign("/");
@@ -126,6 +219,7 @@ function logout() {
   try {
     const cfg = await publicConfig();
     const app = findApp(cfg);
+    ensureResourcePanel(app);
 
     $("clientId").textContent = app.clientId;
     $("orgId").textContent = app.organizationId;
@@ -136,7 +230,13 @@ function logout() {
     let tokens = JSON.parse(sessionStorage.getItem(tokenKey) || "null");
     tokens = await finishLogin(app) || tokens;
 
-    if (tokens) renderIdentity(app, tokens);
+    if (tokens) {
+      renderIdentity(app, tokens);
+      const button = document.getElementById("crossOrgTest");
+      button.disabled = false;
+      button.onclick = () => runCrossOrgTest(app, tokens);
+      await loadOwnResource(app, tokens);
+    }
   } catch (e) {
     $("status").textContent = "Configuration error";
     $("error").textContent = e.stack || e.message;

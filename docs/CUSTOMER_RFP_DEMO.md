@@ -702,3 +702,248 @@ Validation:
 ```bash
 ./scripts/validate-b2b-oidc.sh
 ```
+
+## Cross-organization protected-resource isolation
+
+RF-15 is demonstrated at the protected-resource layer, not only through
+different organization/user/application object IDs.
+
+Each organization-local B2B browser application has a corresponding protected
+API endpoint:
+
+```text
+Retail Governance Console       -> /api/b2b/retail/governance
+Seller Partner Storefront       -> /api/b2b/seller/storefront
+Seller Backoffice               -> /api/b2b/seller/backoffice
+Settlement Service              -> /api/b2b/fintech/settlements
+Logistics Integration           -> /api/b2b/logistics/shipments
+International Partner Console   -> /api/b2b/international/partners
+Mexico Partner Storefront       -> /api/b2b/mexico/storefront
+Mexico Operations               -> /api/b2b/mexico/operations
+```
+
+The API validates the JWT signature, issuer and audience and then compares the
+WSO2-issued `org_id` claim against the organization that owns the requested
+resource.
+
+```text
+same org_id as resource owner -> HTTP 200
+different org_id              -> HTTP 403
+                                 cross_organization_access_denied
+```
+
+For example:
+
+```text
+Seller Alpha token
+  /api/b2b/seller/storefront -> 200
+  /api/b2b/mexico/operations -> 403
+
+Marketplace Mexico token
+  /api/b2b/mexico/operations -> 200
+  /api/b2b/seller/storefront -> 403
+```
+
+The browser applications expose both the positive call and an explicit
+cross-organization negative-test button.
+
+Automated proof:
+
+```bash
+./scripts/test-b2b-resource-isolation.sh
+```
+
+The test obtains real WSO2 organization-scoped access tokens and evaluates the
+complete six-organization x eight-resource matrix. Expected result: eight
+same-organization allows and forty cross-organization HTTP 403 denials.
+
+## Agent Identity + MCP + CIBA On-Behalf-Of
+
+This demo implements a real dual-identity agent authorization pattern using
+WSO2 Identity Server 7.3.
+
+### Architecture
+
+```text
+Inventory Reconciliation Agent
+        |
+        | App-Native Authentication
+        | scope = inventory.mcp.read
+        v
+WSO2 Identity Server 7.3
+        |
+        | Agent access token
+        | sub = <agent>
+        | aut = AGENT
+        v
+Inventory MCP Server :8200
+        |
+        +--> inventory_get_snapshot       ALLOW
+        |
+        +--> inventory_adjust_stock       DENY
+                  |
+                  | missing inventory.mcp.adjust
+                  v
+        Inventory Agent initiates CIBA
+                  |
+                  | actor_token = Agent token
+                  | login_hint = carol
+                  | notification_channel = external
+                  v
+        WSO2 CIBA /oauth2/ciba
+                  |
+                  | auth_url
+                  v
+        Carol authenticates + approves
+                  |
+                  v
+        WSO2 CIBA token polling
+                  |
+                  | OBO access token
+                  | sub = <Carol user>
+                  | act.sub = <Inventory Agent>
+                  | inventory.mcp.adjust
+                  v
+        Inventory Agent retries MCP mutation
+                  |
+                  v
+        Inventory MCP Server
+                  |
+                  +--> validates JWT/JWKS/issuer/client
+                  +--> validates scopes
+                  +--> requires act.sub for mutation
+                  +--> verifies expected Agent identity
+                  +--> records humanSub + agentSub in audit
+```
+
+### WSO2 resources
+
+MCP resource:
+
+```text
+MarketSphere Inventory MCP
+identifier: https://mcp.marketsphere.local/inventory
+```
+
+Scopes:
+
+```text
+inventory.mcp.read
+inventory.mcp.adjust
+inventory.mcp.audit
+```
+
+MCP Client application:
+
+```text
+Inventory MCP Agent Client
+Authorization Code + PKCE
+CIBA grant
+App-Native Authentication = enabled
+CIBA notification channel = External
+CIBA auth_req_id expiry = 300 seconds
+```
+
+Roles and permissions:
+
+```text
+inventory-mcp-agent-reader
+  principal: Inventory Reconciliation Agent
+  permissions:
+    inventory.mcp.read
+
+inventory-mcp-human-approver
+  principal: carol
+  permissions:
+    inventory.mcp.read
+    inventory.mcp.adjust
+    inventory.mcp.audit
+```
+
+This is deliberately stronger than giving the Agent every scope and merely
+requesting a smaller token: the Agent's role itself does not contain the
+sensitive mutation permission.
+
+### MCP server policy
+
+```text
+inventory_get_snapshot
+  inventory.mcp.read
+  OBO not required
+
+inventory_adjust_stock
+  inventory.mcp.read
+  inventory.mcp.adjust
+  OBO required
+  act.sub must be Inventory Reconciliation Agent
+
+inventory_get_audit
+  inventory.mcp.audit
+  OBO required
+```
+
+The MCP service uses the official `@modelcontextprotocol/sdk` Streamable HTTP
+transport. Bearer JWTs are verified using the WSO2 JWKS and issuer. Sensitive
+tools additionally require dual identity.
+
+### Run
+
+Non-interactive evidence:
+
+```bash
+./scripts/validate-agent-mcp-ciba.sh
+```
+
+Human-in-the-loop CIBA/OBO flow:
+
+```bash
+./scripts/agent-mcp-ciba-demo.sh
+```
+
+For CIBA External notification, the script prints the WSO2 `auth_url`. Open it
+in a private browser and authenticate as:
+
+```text
+carol / Carol@123
+```
+
+After approval, the demo prints the OBO token claim summary and the MCP audit
+record containing both the human `sub` and Agent `act.sub`.
+
+### Demo claim
+
+This scenario is LIVE evidence for the extended Agent Identity / human approval
+/ CIBA OBO / MCP authorization requirement. It should not be presented as an
+LLM safety control: authorization is enforced by WSO2-issued identity tokens,
+roles/scopes and the MCP resource server regardless of what an LLM decides.
+
+### CIBA MCP client confidentiality
+
+The MCP/CIBA application used for background human approval is intentionally a
+**confidential** OAuth client.
+
+This is different from the browser-facing MCP authorization-code pattern. The
+CIBA backchannel endpoint authenticates the client and WSO2 Identity Server
+disables public-client CIBA by default. The Inventory Agent remains a separate
+actor identity; the confidential MCP client is the backchannel relying party
+that initiates CIBA and polls for the resulting delegated token.
+
+The resulting model is:
+
+```text
+Inventory Agent actor token
+        +
+confidential MCP/CIBA client
+        +
+human CIBA approval
+        ↓
+OBO access token
+sub     = approving user
+act.sub = Inventory Agent
+```
+
+Verify the client configuration with:
+
+```bash
+./scripts/verify-agent-mcp-ciba-client.sh
+```

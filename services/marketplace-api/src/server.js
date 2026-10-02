@@ -41,6 +41,7 @@ function principalFrom(payload) {
     familyName: payload.family_name || payload["http://wso2.org/claims/lastname"],
     department: payload.department || payload["http://wso2.org/claims/department"],
     clientId: payload.azp || payload.client_id,
+    organizationId: payload.org_id || payload.organization_id || payload["http://wso2.org/claims/organization_id"],
     roles: [...roles],
     groups: [...groups],
     scopes: [...scopes],
@@ -74,8 +75,14 @@ async function authenticate(req, res, next) {
     const acceptedAudiences = new Set([
       config.resources.marketplace.identifier,
       config.resources.downstream.identifier,
-      ...Object.values(config.clients).map((client) => client.clientId).filter(Boolean),
-    ]);
+      ...Object.values(config.clients || {})
+        .map((client) => client.clientId)
+        .filter(Boolean),
+      ...(config.b2b?.organizationApplications || [])
+        .map((client) => client.clientId)
+        .filter(Boolean),
+      config.b2b?.managementApplication?.clientId,
+    ].filter(Boolean));
     const audiences = listClaim(payload.aud);
     if (!audiences.length || !audiences.some((aud) => acceptedAudiences.has(aud))) {
       return res.status(401).json({ code: "invalid_audience", message: "The token was not issued for this demonstration.", audiences });
@@ -113,6 +120,112 @@ function requireEntitlement({ groups = [], roles = [] }) {
         actual: { groups: [...currentGroups], roles: [...currentRoles] },
       });
     }
+    next();
+  };
+}
+
+const B2B_RESOURCE_DEFINITIONS = [
+  {
+    path: "/api/b2b/retail/governance",
+    organizationKey: "retail-br",
+    service: "Retail Governance API",
+    data: { delegatedSellers: 24, policyExceptions: 2, pendingReviews: 5 },
+  },
+  {
+    path: "/api/b2b/seller/storefront",
+    organizationKey: "seller-alpha",
+    service: "Seller Storefront API",
+    data: { ordersToday: 184, conversionRate: "4.8%", catalogItems: 12480 },
+  },
+  {
+    path: "/api/b2b/seller/backoffice",
+    organizationKey: "seller-alpha",
+    service: "Seller Backoffice API",
+    data: { openTasks: 17, returns: 8, operationalSla: "99.7%" },
+  },
+  {
+    path: "/api/b2b/fintech/settlements",
+    organizationKey: "fintech-latam",
+    service: "Fintech Settlement API",
+    data: { settlementVolume: "BRL 2.4M", exceptions: 3, cutoff: "18:00" },
+  },
+  {
+    path: "/api/b2b/logistics/shipments",
+    organizationKey: "seller-logistics",
+    service: "Logistics Shipment API",
+    data: { inTransit: 418, delayed: 6, carriers: 9 },
+  },
+  {
+    path: "/api/b2b/international/partners",
+    organizationKey: "international",
+    service: "International Partner API",
+    data: { markets: 7, partners: 31, currencies: 5 },
+  },
+  {
+    path: "/api/b2b/mexico/storefront",
+    organizationKey: "mexico",
+    service: "Mexico Storefront API",
+    data: { ordersToday: 263, conversionRate: "5.1%", catalogItems: 9204 },
+  },
+  {
+    path: "/api/b2b/mexico/operations",
+    organizationKey: "mexico",
+    service: "Mexico Operations API",
+    data: { incidents: 4, operationalSla: "99.8%", integrations: 14 },
+  },
+];
+
+function organizationByKey(config, organizationKey) {
+  return (config.b2b?.organizations || []).find(
+    (organization) => organization.key === organizationKey,
+  );
+}
+
+function requireB2BOrganization(organizationKey) {
+  return (req, res, next) => {
+    const config = loadConfig();
+    const organization = organizationByKey(config, organizationKey);
+
+    if (!organization?.id) {
+      return res.status(500).json({
+        code: "b2b_resource_configuration_error",
+        message: `Organization ${organizationKey} is not configured.`,
+      });
+    }
+
+    const tokenOrganizationId = req.principal.organizationId;
+    if (!tokenOrganizationId) {
+      return res.status(403).json({
+        decision: "deny",
+        code: "organization_context_required",
+        message: "The access token does not carry an organization context.",
+        enforcedClaim: "org_id",
+        resourceOrganization: {
+          key: organization.key,
+          id: organization.id,
+          name: organization.name,
+        },
+      });
+    }
+
+    if (String(tokenOrganizationId) !== String(organization.id)) {
+      return res.status(403).json({
+        decision: "deny",
+        code: "cross_organization_access_denied",
+        message:
+          "The access token belongs to a different organization than the requested resource.",
+        policy: "token.org_id == resource.organizationId",
+        enforcedClaim: "org_id",
+        tokenOrganizationId,
+        resourceOrganization: {
+          key: organization.key,
+          id: organization.id,
+          name: organization.name,
+        },
+      });
+    }
+
+    req.b2bResourceOrganization = organization;
     next();
   };
 }
@@ -182,7 +295,7 @@ function publicConfig(config) {
 const app = express();
 app.disable("x-powered-by");
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors({ origin: ["http://localhost:3000", "http://localhost:3100", "http://localhost:3101", "http://localhost:3102"], credentials: false }));
+app.use(cors({ origin: ["http://localhost:3000", "http://localhost:3100", "http://localhost:3101", "http://localhost:3102", "http://localhost:3201", "http://localhost:3202", "http://localhost:3203", "http://localhost:3204", "http://localhost:3205", "http://localhost:3206", "http://localhost:3207", "http://localhost:3208"], credentials: false }));
 app.use(express.json({ limit: "200kb" }));
 app.use(morgan("combined"));
 
@@ -209,6 +322,35 @@ app.get("/api/status", async (_req, res) => {
     warnings: config.bootstrap.warnings,
   });
 });
+
+for (const resource of B2B_RESOURCE_DEFINITIONS) {
+  app.get(
+    resource.path,
+    authenticate,
+    requireB2BOrganization(resource.organizationKey),
+    (req, res) => {
+      res.json({
+        decision: "allow",
+        policy: "token.org_id == resource.organizationId",
+        enforcedClaim: "org_id",
+        organization: {
+          key: req.b2bResourceOrganization.key,
+          id: req.b2bResourceOrganization.id,
+          name: req.b2bResourceOrganization.name,
+        },
+        service: resource.service,
+        resource: resource.path,
+        principal: {
+          subject: req.principal.subject,
+          username: req.principal.username,
+          clientId: req.principal.clientId,
+          organizationId: req.principal.organizationId,
+        },
+        data: resource.data,
+      });
+    },
+  );
+}
 
 app.get("/api/me", authenticate, (req, res) => {
   res.json({ principal: req.principal, jwtHeader: req.jwtHeader, decision: "authenticated" });

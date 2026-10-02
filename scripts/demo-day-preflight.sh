@@ -93,3 +93,12 @@ echo "IMPORTANT: log out/in as admin before presenting organization switching."
 
 echo "[b2b-oidc] Validating organization-local OIDC applications"
 ./scripts/validate-b2b-oidc.sh
+
+echo
+echo "[b2b-resource] Live cross-organization protected-resource matrix"
+./scripts/test-b2b-resource-isolation.sh
+
+echo
+echo "[agent-mcp] Validating Agent Identity + MCP least-privilege path"
+./scripts/validate-agent-mcp-ciba.sh
+

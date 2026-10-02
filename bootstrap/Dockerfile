@@ -7,4 +7,7 @@ COPY rfp_extension.py .
 COPY admin_boundary.py .
 COPY multi_app_extension.py .
 COPY b2b_oidc_extension.py .
-CMD ["sh", "-c", "python -u bootstrap.py && python -u rfp_extension.py && python -u admin_boundary.py && python -u multi_app_extension.py && python -u b2b_oidc_extension.py"]
+COPY b2b_resource_extension.py .
+COPY b2b_resource_isolation_test.py .
+COPY agent_mcp_ciba_extension.py .
+CMD ["sh", "-c", "python -u bootstrap.py && python -u rfp_extension.py && python -u admin_boundary.py && python -u multi_app_extension.py && python -u b2b_oidc_extension.py && python -u b2b_resource_extension.py && python -u agent_mcp_ciba_extension.py"]

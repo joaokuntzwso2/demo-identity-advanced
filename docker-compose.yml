@@ -160,6 +160,49 @@ services:
       timeout: 5s
       retries: 20
 
+
+  inventory-mcp:
+    build: ./services/inventory-mcp
+    environment:
+      PORT: 8200
+      RUNTIME_CONFIG_PATH: /runtime/runtime-config.json
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    volumes:
+      - runtime_config:/runtime:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    ports:
+      - "8200:8200"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8200/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  inventory-agent-mcp:
+    build: ./services/inventory-agent-mcp
+    environment:
+      PORT: 5002
+      RUNTIME_CONFIG_PATH: /runtime/runtime-config.json
+      AGENT_MCP_PRIVATE_PATH: /runtime/agent-mcp-private.json
+      INVENTORY_MCP_URL: http://inventory-mcp:8200/mcp
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    volumes:
+      - runtime_config:/runtime:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      inventory-mcp:
+        condition: service_healthy
+    ports:
+      - "5002:5002"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:5002/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
 volumes:
   wso2_data:
   runtime_config:
